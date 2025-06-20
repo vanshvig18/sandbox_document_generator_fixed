@@ -2,3 +2,6 @@ streamlit
 openai
 pandas
 openpyxl
+python-docx
+PyPDF2
+
