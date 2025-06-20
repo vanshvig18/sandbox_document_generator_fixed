@@ -1,44 +1,46 @@
 import streamlit as st
-from openai import OpenAI
+from openai import OpenAI, AuthenticationError, OpenAIError
 
-st.set_page_config(page_title="Generate Document", layout="wide")
+st.set_page_config(page_title="Document Generator", page_icon="🧠")
+
+st.sidebar.title("Home")
+st.sidebar.markdown("## GenerateDocument")
 
 st.title("🧠 Document Generator")
 
-if "documents" not in st.session_state:
-    st.warning("Please upload files on the home page first.")
-    st.stop()
-
-# Concatenate all documents
-all_docs = "\n\n".join(st.session_state["documents"])
-
-# Access OpenAI client
-client = OpenAI(api_key=st.secrets["openai_api_key"])
-
+# Template selection
 st.subheader("Choose a Template")
-
 template = st.radio(
     "Select a document generation template:",
-    options=["📄 Summary Report", "📊 Actionable Insights"]
+    ("Summary Report", "Actionable Insights"),
 )
 
-if template == "📄 Summary Report":
-    prompt = f"Summarize the following multi-format documents (text, CSV, Excel) into a clear and structured report:\n\n{all_docs}"
-elif template == "📊 Actionable Insights":
-    prompt = f"Analyze the following mixed-format documents and extract meaningful insights and action items:\n\n{all_docs}"
+# Text area for input
+prompt = st.text_area("Enter text to generate a document:", height=200)
 
-if st.button("📄 Generate Document"):
-    with st.spinner("Generating document..."):
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-        )
-        generated = response.choices[0].message.content
-        st.session_state["generated_doc"] = generated
-        st.success("Document generated successfully!")
+# Generate button
+if st.button("Generate Document"):
+    if not prompt:
+        st.warning("Please enter some text before generating the document.")
+    else:
+        try:
+            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-if "generated_doc" in st.session_state:
-    st.subheader("📑 Preview of Generated Document")
-    st.text_area("Generated Output", value=st.session_state["generated_doc"], height=400)
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": f"You are generating a {template.lower()}."},
+                    {"role": "user", "content": prompt},
+                ],
+            )
 
-    st.download_button("💾 Download as .txt", st.session_state["generated_doc"], file_name="generated_document.txt")
+            generated_text = response.choices[0].message.content
+            st.success("✅ Document generated successfully!")
+            st.text_area("Generated Document:", value=generated_text, height=300)
+
+        except AuthenticationError:
+            st.error("❌ Authentication failed. Please check your OpenAI API key in the app secrets.")
+        except OpenAIError as e:
+            st.error(f"❌ OpenAI API error: {e}")
+        except Exception as e:
+            st.error(f"❌ An unexpected error occurred: {e}")
