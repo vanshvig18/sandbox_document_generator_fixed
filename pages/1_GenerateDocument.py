@@ -1,7 +1,8 @@
 import streamlit as st
-from openai import OpenAI, OpenAIError, RateLimitError
+from openai import OpenAI
 
 st.set_page_config(page_title="Generate Document", layout="wide")
+
 st.title("🧠 Document Generator")
 
 if "documents" not in st.session_state:
@@ -28,23 +29,14 @@ elif template == "📊 Actionable Insights":
 
 if st.button("📄 Generate Document"):
     with st.spinner("Generating document..."):
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
-            )
-            generated = response.choices[0].message.content
-            st.session_state["generated_doc"] = generated
-            st.success("Document generated successfully!")
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        generated = response.choices[0].message.content
+        st.session_state["generated_doc"] = generated
+        st.success("Document generated successfully!")
 
-        except RateLimitError:
-            st.error("⚠️ OpenAI API quota exceeded. Please check your usage or upgrade your plan.")
-            st.markdown("[Check your usage here](https://platform.openai.com/account/usage)")
-
-        except OpenAIError as e:
-            st.error(f"🚨 An error occurred while calling OpenAI: {str(e)}")
-
-# Preview & Download
 if "generated_doc" in st.session_state:
     st.subheader("📑 Preview of Generated Document")
     st.text_area("Generated Output", value=st.session_state["generated_doc"], height=400)
