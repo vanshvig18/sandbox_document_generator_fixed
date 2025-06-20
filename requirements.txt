@@ -3,5 +3,5 @@ openai
 pandas
 openpyxl
 python-docx
-PyPDF2
+google-generativeai
 
