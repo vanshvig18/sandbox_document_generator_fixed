@@ -1,11 +1,14 @@
 import streamlit as st
 from openai import OpenAI, error as OpenAIError
 
+# App configuration
 st.set_page_config(page_title="Document Generator", page_icon="🧠")
 
+# Sidebar
 st.sidebar.title("Home")
 st.sidebar.markdown("## GenerateDocument")
 
+# Title
 st.title("🧠 Document Generator")
 
 # Template selection
@@ -14,18 +17,21 @@ template = st.radio(
     ("Summary Report", "Actionable Insights"),
 )
 
-# User prompt input
+# User input
 prompt = st.text_area("Enter text to generate a document:", height=200)
 
+# Action button
 if st.button("Generate Document"):
-    if not prompt:
-        st.warning("Please enter some text to proceed.")
+    if not prompt.strip():
+        st.warning("⚠️ Please enter some text to proceed.")
     else:
         try:
             client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
             model = "gpt-4"
-            
+            fallback_model = "gpt-3.5-turbo"
+
             try:
+                # Try GPT-4
                 response = client.chat.completions.create(
                     model=model,
                     messages=[
@@ -35,7 +41,7 @@ if st.button("Generate Document"):
                 )
             except OpenAIError.InvalidRequestError as e:
                 if "model" in str(e) and "not found" in str(e):
-                    model = "gpt-3.5-turbo"
+                    model = fallback_model  # Fallback
                     response = client.chat.completions.create(
                         model=model,
                         messages=[
@@ -45,8 +51,9 @@ if st.button("Generate Document"):
                     )
                 else:
                     raise
-            
-            generated_text = response.choices[0].message.content
+
+            # Display response
+            generated_text = response.choices[0].message.content.strip()
             st.success(f"✅ Document generated with **{model}**")
             st.text_area("Generated Document:", value=generated_text, height=300)
 
