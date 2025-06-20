@@ -1,81 +1,45 @@
 import streamlit as st
-import openai
-import os
-import tempfile
+from openai import OpenAI
 
-from docx import Document
-from PyPDF2 import PdfReader
+st.set_page_config(page_title="Generate Document", layout="wide")
 
-# Set up Streamlit page
-st.set_page_config(page_title="Document Editor", page_icon="📝")
+st.title("🧠 Document Generator")
 
-st.title("📝 AI-Powered Document Editor")
-st.markdown("Upload a document and describe how you’d like to modify it.")
+if "documents" not in st.session_state:
+    st.warning("Please upload files on the home page first.")
+    st.stop()
 
-# File uploader
-uploaded_file = st.file_uploader("Upload a .txt, .docx or .pdf file", type=["txt", "docx", "pdf"])
+# Concatenate all documents
+all_docs = "\n\n".join(st.session_state["documents"])
 
-# Edit prompt
-edit_prompt = st.text_area("Enter what you want to change or add:", height=150)
+# Access OpenAI client
+client = OpenAI(api_key=st.secrets["openai_api_key"])
 
-# OpenAI key
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+st.subheader("Choose a Template")
 
-def extract_text(file):
-    file_type = file.name.split(".")[-1].lower()
-    if file_type == "txt":
-        return file.read().decode("utf-8")
-    elif file_type == "docx":
-        doc = Document(file)
-        return "\n".join([para.text for para in doc.paragraphs])
-    elif file_type == "pdf":
-        reader = PdfReader(file)
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
-    else:
-        return ""
+template = st.radio(
+    "Select a document generation template:",
+    options=["📄 Summary Report", "📊 Actionable Insights"]
+)
 
-def generate_new_document(content, instructions):
-    prompt = (
-        "You are a document editor. Based on the following original content, "
-        "apply the user's instructions to improve or modify the document.\n\n"
-        "Instructions:\n"
-        f"{instructions}\n\n"
-        "Original Document:\n"
-        f"{content}\n\n"
-        "Edited Document:"
-    )
-    response = openai.ChatCompletion.create(
-        model="gpt-4",  # Fallback logic can be added here
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7
-    )
-    return response["choices"][0]["message"]["content"].strip()
+prompt = ""
+if template == "📄 Summary Report":
+    prompt = f"Summarize the following documents into a well-structured report:\n\n{all_docs}"
+elif template == "📊 Actionable Insights":
+    prompt = f"Analyze the following documents and extract key insights and action items:\n\n{all_docs}"
 
-if st.button("Generate Edited Document"):
-    if not uploaded_file or not edit_prompt.strip():
-        st.warning("Please upload a document and provide editing instructions.")
-    else:
-        with st.spinner("Generating document..."):
-            try:
-                original_text = extract_text(uploaded_file)
-                updated_text = generate_new_document(original_text, edit_prompt)
+if st.button("📄 Generate Document"):
+    with st.spinner("Generating document..."):
+        response = client.chat.completions.create(
+            model="gpt-4",  # Change to gpt-3.5-turbo if needed
+            messages=[{"role": "user", "content": prompt}],
+        )
+        generated = response.choices[0].message.content
+        st.session_state["generated_doc"] = generated
+        st.success("Document generated successfully!")
 
-                st.success("✅ Document generated successfully.")
-                st.text_area("Preview:", value=updated_text, height=300)
+if "generated_doc" in st.session_state:
+    st.subheader("📑 Preview of Generated Document")
+    st.text_area("Generated Output", value=st.session_state["generated_doc"], height=400)
 
-                # Prepare download
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
-                tmp.write(updated_text.encode("utf-8"))
-                tmp.close()
-
-                with open(tmp.name, "rb") as f:
-                    st.download_button(
-                        label="📥 Download Edited Document",
-                        data=f,
-                        file_name="edited_document.txt",
-                        mime="text/plain"
-                    )
-
-                os.unlink(tmp.name)
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
+    st.download_button("💾 Download as .txt", st.session_state["generated_doc"], file_name="generated_document.txt")
