@@ -1,8 +1,8 @@
+
 import streamlit as st
-from openai import OpenAI
+import google.generativeai as genai
 
 st.set_page_config(page_title="Generate Document", layout="wide")
-
 st.title("🧠 Document Generator")
 
 if "documents" not in st.session_state:
@@ -12,8 +12,11 @@ if "documents" not in st.session_state:
 # Concatenate all documents
 all_docs = "\n\n".join(st.session_state["documents"])
 
-# Access OpenAI client
-client = OpenAI(api_key=st.secrets["openai_api_key"])
+# Configure Gemini
+genai.configure(api_key=st.secrets["gemini_api_key"])
+
+# Load Gemini model
+model = genai.GenerativeModel("gemini-pro")
 
 st.subheader("Choose a Template")
 
@@ -29,14 +32,15 @@ elif template == "📊 Actionable Insights":
 
 if st.button("📄 Generate Document"):
     with st.spinner("Generating document..."):
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-        )
-        generated = response.choices[0].message.content
-        st.session_state["generated_doc"] = generated
-        st.success("Document generated successfully!")
+        try:
+            response = model.generate_content(prompt)
+            generated = response.text
+            st.session_state["generated_doc"] = generated
+            st.success("Document generated successfully!")
+        except Exception as e:
+            st.error(f"🚨 An error occurred while calling Gemini: {str(e)}")
 
+# Preview & Download
 if "generated_doc" in st.session_state:
     st.subheader("📑 Preview of Generated Document")
     st.text_area("Generated Output", value=st.session_state["generated_doc"], height=400)
