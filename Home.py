@@ -3,7 +3,7 @@ import pandas as pd
 
 st.set_page_config(page_title="Multi-Doc QA & Generator", layout="wide")
 
-st.title("📁 Upload Documents")
+st.title("📁Sandbox based Document Generator")
 st.write("Upload `.txt`, `.csv`, or `.xlsx` files to generate a custom document using templates.")
 
 uploaded_files = st.file_uploader(
